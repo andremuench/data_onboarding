@@ -5,3 +5,4 @@ Links to Orchestration tools like Airflow are in planning...
 
 The tool is in DRAFT stage.
 
+![Layout](layout.svg)
