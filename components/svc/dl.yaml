@@ -1,0 +1,9 @@
+storage:
+  storage_type: minio
+  bucket: dummy
+  access_key: AHE4TYJHL1T312KTGAZF
+  secret_key: FrtWnX0xly9iu7m6905dIO+zprCetQFJyfB1x8E+
+
+metadb:
+  db_type: postgres
+  engine: "postgresql+psycopg2://postgres:admin123@localhost/meta"

@@ -1,31 +1,31 @@
+from .util import get_config
 from .execution import get_execution_client
-from storage import get_storage
+from .storage import get_storage
 from fastapi import FastAPI, HTTPException
 from fastapi.params import Depends
 from fastapi.requests import Request
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.exc import StatementError
-from model import meta, datasource_tbl
+from .model import IngestStatus, meta, datasource_tbl
 from databases import Database
-import json
 from uuid import uuid4
 import posixpath
 from datetime import datetime
-from model import DataSource
+from .model import DataSource
 
 from urllib3.packages.six import BytesIO
 
 access_key = os.environ.get("MINIO_ACCESS_KEY")
 secret_key = os.environ.get("MINIO_SECRET_KEY")
 
-DATABASE_URL = "postgresql+psycopg2://postgres:admin123@localhost/meta"
+cfg = get_config()
+storage = get_storage("minio", cfg)
+exc_client = get_execution_client("celery")
+
+DATABASE_URL = cfg.metadb.engine
 engine = create_engine(DATABASE_URL)
 database = Database(DATABASE_URL.replace("+psycopg2", ""))
-
-
-storage = get_storage("minio")
-exc_client = get_execution_client("celery")
 
 app = FastAPI()
 
@@ -58,7 +58,7 @@ async def add_data_source(source: DataSource):
         name=source.name,
         path=source.path,
         uid=uid,
-        dataschema=json.dumps(source.dataschema),
+        dataschema=source.dataschema.json(),
     )
     await database.execute(q)
     return uid
@@ -96,12 +96,13 @@ def put_data(ref: str, request: Request, body=Depends(get_body)):
 
     ing_req_id = exc_client.ingest(path, ds.dataschema)
 
-    # TODO has to spawn a runner that executes the ingestion (like gitlab runner)
-    # TODO return identifier of ingest job
+    # TODO Question here is if the id of the ingestion job should be returned or wrapped in another uuid?
+    # At the moment the uuid of the ingestion job is returned directly
+
     return ing_req_id
 
 
-@app.get("/ingest-status/{req}")
-async def get_status(req: str):
-    # TODO: get status from the runner / or DB where the runner reports to
-    pass
+@app.get("/ingest-status/{req_id}")
+def get_status(req_id: str) -> IngestStatus:
+    status = exc_client.get_status(req_id)
+    return IngestStatus(**status.__dict__)
