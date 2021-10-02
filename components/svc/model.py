@@ -1,7 +1,7 @@
 from enum import Enum
 from sqlalchemy import MetaData, Table, Column, String
 from sqlalchemy.dialects.postgresql import UUID, JSON
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from pydantic.types import UUID4
 from typing import List, Literal, Optional, Dict
 import json
@@ -81,3 +81,10 @@ class MetaDBConfig(BaseModel):
 class Config(BaseModel):
     storage: Dict
     metadb: MetaDBConfig
+
+    @validator("storage")
+    def validate_storage(cls, v: Dict):
+        if not "storage_type" in v.keys():
+            raise ValueError("Type must be in storage definition")
+        return v
+        

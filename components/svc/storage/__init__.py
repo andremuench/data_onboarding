@@ -9,8 +9,8 @@ storage_mapping = {
     "minio": MinioStorageBackend
 }
 
-def get_storage(storage_type: str, cfg: Config) -> AbstractStorageBackend:
+def get_storage(cfg: Config) -> AbstractStorageBackend:
     try:
-        return storage_mapping[storage_type].from_config(cfg)
+        return storage_mapping[cfg.storage["storage_type"]].from_config(cfg)
     except KeyError:
         raise NoSuchStorage

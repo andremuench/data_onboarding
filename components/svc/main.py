@@ -20,7 +20,7 @@ access_key = os.environ.get("MINIO_ACCESS_KEY")
 secret_key = os.environ.get("MINIO_SECRET_KEY")
 
 cfg = get_config()
-storage = get_storage("minio", cfg)
+storage = get_storage(cfg)
 exc_client = get_execution_client("celery")
 
 DATABASE_URL = cfg.metadb.engine
