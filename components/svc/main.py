@@ -1,4 +1,4 @@
-from .util import get_config
+from .util.config import get_config
 from .execution import get_execution_client
 from .storage import get_storage
 from fastapi import FastAPI, HTTPException
@@ -58,7 +58,8 @@ async def add_data_source(source: DataSource):
         name=source.name,
         path=source.path,
         uid=uid,
-        dataschema=source.dataschema.json(),
+        schema=source.schema_.json(by_alias=True),
+        input_spec=source.input_spec.json(by_alias=True)
     )
     await database.execute(q)
     return uid
@@ -94,7 +95,7 @@ def put_data(ref: str, request: Request, body=Depends(get_body)):
 
     storage.put(path, BytesIO(body), content_type=cnt_type)
 
-    ing_req_id = exc_client.ingest(path, ds.dataschema)
+    ing_req_id = exc_client.ingest(path, ds)
 
     # TODO Question here is if the id of the ingestion job should be returned or wrapped in another uuid?
     # At the moment the uuid of the ingestion job is returned directly

@@ -40,12 +40,19 @@ validator_map:Dict[DataType, Callable] = {
     DataType.DATETIME: dummy_validate
 }
 
+def validate_column_list(df: pd.DataFrame, schema: DataSchema):
+    try:
+        assert set([f.name for f in schema.fields]).issubset(df.columns)
+    except AssertionError:
+        raise ValidationError
+
 def validate(df: pd.DataFrame, schema: DataSchema):
+    validate_column_list(df, schema)
     for rec in df.itertuples(index=False):
         for f in schema.fields:
             try:
                 val = getattr(rec, f.name)
-                validator = validator_map[f.datatype]
+                validator = validator_map[f.type_]
                 validator(val)
             except AttributeError:
                 raise ValidationError

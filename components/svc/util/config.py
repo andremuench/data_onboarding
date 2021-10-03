@@ -1,6 +1,6 @@
 import os
 import yaml
-from .model import Config
+from ..model import Config
 
 def get_config_path():
     return os.environ.get("DATALOADER_CFG", "dl.yaml")
