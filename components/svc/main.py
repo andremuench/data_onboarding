@@ -1,8 +1,8 @@
+from fastapi import UploadFile, File
 from .util.config import get_config
 from .execution import get_execution_client
 from .storage import get_storage
 from fastapi import FastAPI, HTTPException
-from fastapi.params import Depends
 from fastapi.requests import Request
 import os
 from sqlalchemy import create_engine
@@ -12,6 +12,8 @@ from databases import Database
 from uuid import uuid4
 import posixpath
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
+import asyncio
 from .model import DataSource
 
 from urllib3.packages.six import BytesIO
@@ -74,8 +76,20 @@ async def get_data_source(uid: str) -> DataSource:
     return ds
 
 
+# Wrapper for Async -> Sync Read
+class ReadWrapper:
+
+    def __init__(self, file_obj:UploadFile):
+        self.file_obj = file_obj
+
+    def read(self, size):
+        cr = self.file_obj.read(size)
+        print(f"Reading batch of size {size}")
+        return asyncio.new_event_loop().run_until_complete(cr)
+
+
 @app.post("/data/{ref}", status_code=201)
-def put_data(ref: str, request: Request, body=Depends(get_body)):
+async def put_data(ref: str, file:UploadFile=File(...)):
     try:
         result = engine.execute(
             datasource_tbl.select().where(datasource_tbl.c.uid == ref)
@@ -87,13 +101,18 @@ def put_data(ref: str, request: Request, body=Depends(get_body)):
         raise HTTPException(404)
     ds = DataSource.from_record(d)
 
-    cnt_type = request.headers.get("content-type")
     request_id = uuid4()
     _id = f"upload_{request_id}_{datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
 
     path = posixpath.join(ds.path, _id)
 
-    storage.put(path, BytesIO(body), content_type=cnt_type)
+    wrapped = ReadWrapper(file)
+    pool = ThreadPoolExecutor()
+    def put_async(reader):
+        storage.put(path, reader, content_type=file.content_type)
+    f = pool.submit(put_async, wrapped)
+    await asyncio.wrap_future(f)
+    #storage.put(path, BytesIO(body), content_type=cnt_type)
 
     ing_req_id = exc_client.ingest(path, ds)
 

@@ -28,7 +28,7 @@ class MinioStorageBackend(AbstractStorageBackend):
         return cls(storage_cfg.access_key, storage_cfg.secret_key, storage_cfg.bucket)
 
     def put(self, path, object, content_type=None):
-        self._client.put_object(self.bucket, path, object, length=-1, part_size=10*1024*1024, content_type=content_type)
+        self._client.put_object(self.bucket, path, object, length=-1, part_size=5*1024*1024, content_type=content_type)
 
     def get(self, path, chunksize:int=None) -> Iterator[bytes]:
         fi = self.file_info(path)
